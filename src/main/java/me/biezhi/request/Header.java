@@ -5,6 +5,7 @@ public interface Header {
 	String USER_AGENT = "User-Agent";
 	String ACCEPT = "Accept";
 	String ACCEPT_ENCODING = "Accept-Encoding";
+	String ACCEPT_CHARSET = "Accept-Charset";
 	String ACCEPT_LANGUAGE = "Accept-Language";
 	String AUTHORIZATION = "Authorization";
 	String CACHE_CONTROL = "Cache-Control";
@@ -15,9 +16,11 @@ public interface Header {
 	String DATE = "Date";
 	String EXPECT = "Expect";
 	String HOST = "Host";
+	String LOCATION = "Location";
 	String ORIGIN = "Origin";
-	String REFRESH = "Refresh";
+	String REFERER = "Referer";
 	String SERVER = "Server";
+	String VIA = "Via";
 	String SET_COOKIE = "Set-Cookie";
 	
 }

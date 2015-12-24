@@ -59,6 +59,42 @@ public class Request {
 	}
 	
 	/**
+	 * Send put request
+	 * @param url
+	 * @return
+	 */
+	public static Request put(String url){
+		return new Request(url, HttpMethod.PUT);
+	}
+	
+	/**
+	 * Send delete request
+	 * @param url
+	 * @return
+	 */
+	public static Request delete(String url){
+		return new Request(url, HttpMethod.DELETE);
+	}
+	
+	/**
+	 * Send patch request
+	 * @param url
+	 * @return
+	 */
+	public static Request patch(String url){
+		return new Request(url, HttpMethod.PATCH);
+	}
+	
+	/**
+	 * Send head request
+	 * @param url
+	 * @return
+	 */
+	public static Request head(String url){
+		return new Request(url, HttpMethod.HEAD);
+	}
+	
+	/**
 	 * Add form data
 	 * @param name
 	 * @param value
@@ -90,6 +126,10 @@ public class Request {
 		return this;
 	}
 	
+	public Request auth(){
+		return this;
+	}
+	
 	private Request(String url, HttpMethod httpMethod) {
 		this.url = url;
 		this.httpMethod = httpMethod;
@@ -112,6 +152,13 @@ public class Request {
 		}
 		rd.close();
 		return body.toString();
+	}
+	
+	/**
+	 * @return	Return InputStream
+	 */
+	public InputStream stream(){
+		return this.inputStream;
 	}
 	
 	/**
@@ -139,18 +186,19 @@ public class Request {
 	private void send() {
 		try {
 			
-			response = new Response();
+			this.response = new Response();
 			
-			URL yahoo = new URL(this.url);
+			URL _url = new URL(this.url);
 			final HttpURLConnection urlConn = url.startsWith("https") ? 
-					(HttpsURLConnection) yahoo.openConnection() : (HttpURLConnection) yahoo.openConnection();
-					
+					(HttpsURLConnection) _url.openConnection() : (HttpURLConnection) _url.openConnection();
+			
 			urlConn.setRequestMethod(this.httpMethod.toString());
 			urlConn.setReadTimeout(timeout);
 			
+			// Setting header
 			headers.forEach((key, value) -> urlConn.setRequestProperty(key, value.toString()));
 			
-			// send post data
+			// Send post data
 			if(this.httpMethod == HttpMethod.POST){
 				
 				// sn=C02G8416DRJM&cn=&locale=&caller=&num=12345
