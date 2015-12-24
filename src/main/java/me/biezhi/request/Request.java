@@ -13,7 +13,6 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -148,20 +147,16 @@ public class Request {
 			if(url.startsWith("https")){
 				HttpsURLConnection urlConn = (HttpsURLConnection) yahoo.openConnection();
 				urlConn.setRequestMethod(this.httpMethod.toString());
-				Set<String> keys = headers.keySet();
-				for(String key : keys){
-					urlConn.setRequestProperty(key, headers.get(key));
-				}
+				
+				headers.forEach((key, value) -> urlConn.setRequestProperty(key, value));
+				
 				urlConn.setReadTimeout(timeout);
 				response.length(urlConn.getContentLength());
 				this.inputStream = urlConn.getInputStream();
 			} else {
 				HttpURLConnection urlConn = (HttpURLConnection) yahoo.openConnection();
 				urlConn.setRequestMethod(this.httpMethod.toString());
-				Set<String> keys = headers.keySet();
-				for(String key : keys){
-					urlConn.setRequestProperty(key, headers.get(key));
-				}
+				headers.forEach((key, value) -> urlConn.setRequestProperty(key, value));
 				urlConn.setReadTimeout(timeout);
 				response.length(urlConn.getContentLength());
 				this.inputStream = urlConn.getInputStream();
@@ -178,7 +173,6 @@ public class Request {
 
 	private String executeURL(String url) {
 		// url has been a parameter http://xxx.com/aa?name=value
-		
 		StringBuffer sb = new StringBuffer(url);
 		if(formdatas.size() > 0){
 			if(url.indexOf("?") != -1 && url.indexOf("=") != -1){
@@ -186,10 +180,7 @@ public class Request {
 			} else {
 				sb.append("?");
 			}
-			Set<String> keys = formdatas.keySet();
-			for(String key : keys){
-				sb.append(key + "=" + formdatas.get(key) + "&");
-			}
+			formdatas.forEach((key, value) -> sb.append(key + "=" + formdatas.get(key) + "&"));
 		}
 		return sb.substring(0, sb.length() - 1);
 	}

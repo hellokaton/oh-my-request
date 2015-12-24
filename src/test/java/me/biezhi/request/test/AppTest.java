@@ -1,6 +1,7 @@
 package me.biezhi.request.test;
 
-import static me.biezhi.request.Request.*;
+import static me.biezhi.request.Request.get;
+import static me.biezhi.request.Request.post;
 
 import java.io.File;
 import java.io.IOException;
