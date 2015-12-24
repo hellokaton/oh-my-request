@@ -1,6 +1,7 @@
 package me.biezhi.request;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -140,28 +141,36 @@ public class Request {
 			
 			response = new Response();
 			
-			// execute url
-			String realurl = executeURL(this.url);
+			URL yahoo = new URL(this.url);
+			final HttpURLConnection urlConn = url.startsWith("https") ? 
+					(HttpsURLConnection) yahoo.openConnection() : (HttpURLConnection) yahoo.openConnection();
+					
+			urlConn.setRequestMethod(this.httpMethod.toString());
+			urlConn.setReadTimeout(timeout);
 			
-			URL yahoo = new URL(realurl);
-			if(url.startsWith("https")){
-				HttpsURLConnection urlConn = (HttpsURLConnection) yahoo.openConnection();
-				urlConn.setRequestMethod(this.httpMethod.toString());
+			headers.forEach((key, value) -> urlConn.setRequestProperty(key, value.toString()));
+			
+			// send post data
+			if(this.httpMethod == HttpMethod.POST){
 				
-				headers.forEach((key, value) -> urlConn.setRequestProperty(key, value));
+				// sn=C02G8416DRJM&cn=&locale=&caller=&num=12345
+				String urlParameters = this.postParams();
 				
-				urlConn.setReadTimeout(timeout);
-				response.length(urlConn.getContentLength());
-				this.inputStream = urlConn.getInputStream();
-			} else {
-				HttpURLConnection urlConn = (HttpURLConnection) yahoo.openConnection();
-				urlConn.setRequestMethod(this.httpMethod.toString());
-				headers.forEach((key, value) -> urlConn.setRequestProperty(key, value));
-				urlConn.setReadTimeout(timeout);
-				response.length(urlConn.getContentLength());
-				this.inputStream = urlConn.getInputStream();
+				urlConn.setDoOutput(true);
+				DataOutputStream wr = new DataOutputStream(urlConn.getOutputStream());
+				wr.writeBytes(urlParameters);
+				wr.flush();
+				wr.close();
 			}
-			response.statusCode(200);
+			
+			response.contentType(urlConn.getContentType());
+			response.length(urlConn.getContentLength());
+			response.date(urlConn.getDate());
+			response.msg(urlConn.getResponseMessage());
+			response.statusCode(urlConn.getResponseCode());
+			
+			this.inputStream = urlConn.getInputStream();
+			
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 			response.statusCode(500);
@@ -171,18 +180,14 @@ public class Request {
 		}
 	}
 
-	private String executeURL(String url) {
-		// url has been a parameter http://xxx.com/aa?name=value
-		StringBuffer sb = new StringBuffer(url);
+	private String postParams() {
 		if(formdatas.size() > 0){
-			if(url.indexOf("?") != -1 && url.indexOf("=") != -1){
-				sb.append("&");
-			} else {
-				sb.append("?");
-			}
-			formdatas.forEach((key, value) -> sb.append(key + "=" + formdatas.get(key) + "&"));
+			// url has been a parameter e.g:sn=C02G8416DRJM&cn=&locale=&caller=&num=12345
+			StringBuffer sb = new StringBuffer();
+			formdatas.forEach((key, value) -> sb.append( "&" + key + "=" + formdatas.get(key) ));
+			return sb.substring(1);
 		}
-		return sb.substring(0, sb.length() - 1);
+		return null;
 	}
 	
 }
