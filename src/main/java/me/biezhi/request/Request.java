@@ -32,10 +32,10 @@ public class Request {
 	private InputStream inputStream;
 	
 	// Header info
-	private Map<String, String> headers = new HashMap<String, String>();
+	private Map<String, String> headers = new HashMap<>();
 	
 	// Form data
-	private Map<String, Object> formdatas = new HashMap<String, Object>();
+	private Map<String, Object> formdatas = new HashMap<>();
 	
 	// Response
 	private Response response;
@@ -102,6 +102,16 @@ public class Request {
 	 */
 	public Request param(String name, Object value){
 		this.formdatas.put(name, value);
+		return this;
+	}
+	
+	/**
+	 * Put form data
+	 * @param params
+	 * @return
+	 */
+	public Request params(Map<String, Object> params){
+		this.formdatas.putAll(params);
 		return this;
 	}
 	
