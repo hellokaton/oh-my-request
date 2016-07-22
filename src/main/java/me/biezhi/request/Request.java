@@ -1,45 +1,62 @@
 package me.biezhi.request;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.HttpsURLConnection;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
-import javax.net.ssl.HttpsURLConnection;
-
 public class Request {
-	
-	// Default timeout is 60s
-	private int timeout = 60 * 1000;
-	
-	// Request url
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(Request.class);
+
+	/**
+	 * request timeout
+	 */
+	private int timeout = Const.DEFAULT_REQUEST_TIMEOUT;
+
+	/**
+	 * request url
+	 */
 	private String url;
-	
-	// Request method
+
+	/**
+	 * rquest httpmethod
+	 */
 	private HttpMethod httpMethod;
-	
-	// Input data
-	private InputStream inputStream;
-	
-	// Header info
-	private Map<String, String> headers = new HashMap<>();
-	
-	// Form data
-	private Map<String, Object> formdatas = new HashMap<>();
-	
-	// Response
+
+	/**
+	 * request header info
+	 */
+	private Map<String, String> headers;
+
+	/**
+	 * request form data
+	 */
+	private Map<String, Object> formdatas;
+
+	/**
+	 * request body
+	 */
+	private Body body;
+
+	/**
+	 * response
+	 */
 	private Response response;
-	
+
+	private Request(){
+
+	}
+
 	/**
 	 * Send get request
 	 * @param url
@@ -143,6 +160,8 @@ public class Request {
 	private Request(String url, HttpMethod httpMethod) {
 		this.url = url;
 		this.httpMethod = httpMethod;
+		this.headers = new HashMap<String, String>();
+		this.formdatas = new HashMap<String, Object>();
 	}
 	
 	/**
@@ -151,24 +170,20 @@ public class Request {
 	 * @throws IOException
 	 */
 	public String body() throws IOException {
-		send();
-		
-		BufferedReader rd = new BufferedReader(new InputStreamReader(this.inputStream));
-		String line;
-		StringBuffer body = new StringBuffer();
-		while ((line = rd.readLine()) != null) {
-			body.append(line);
-			body.append('\r');
+
+		this.execute();
+
+		if(null != this.body){
+			return this.body.getString();
 		}
-		rd.close();
-		return body.toString();
+		return null;
 	}
 	
 	/**
-	 * @return	Return InputStream
+	 * @return	Return request body
 	 */
-	public InputStream stream(){
-		return this.inputStream;
+	public Body requestBody(){
+		return this.body;
 	}
 	
 	/**
@@ -177,9 +192,18 @@ public class Request {
 	 * @throws IOException
 	 */
 	public void saveAsDisk(File file) throws IOException {
-		send();
-		
-		ReadableByteChannel rbc = Channels.newChannel(this.inputStream);
+
+		this.execute();
+
+		if(null == this.body){
+			throw new IOException("request body is null");
+		}
+
+		if(null == this.body.getInputStream()){
+			throw new IOException("inputstream is null");
+		}
+
+		ReadableByteChannel rbc = Channels.newChannel(this.body.getInputStream());
 		FileOutputStream fos = new FileOutputStream(file);
 		fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
 		fos.flush();
@@ -193,9 +217,14 @@ public class Request {
 		return response;
 	}
 	
-	private void send() {
+	private Body execute() {
 		try {
-			
+
+			LOGGER.debug("Request URL\t\t\t=> {}", this.url);
+			LOGGER.debug("Request Method\t\t=> {}", this.httpMethod);
+			LOGGER.debug("Request Header\t\t=> {}", this.headers);
+			LOGGER.debug("Request FormDatas\t=> {}", this.formdatas);
+
 			this.response = new Response();
 			
 			URL _url = new URL(this.url);
@@ -206,19 +235,24 @@ public class Request {
 			urlConn.setReadTimeout(timeout);
 			
 			// Setting header
-			headers.forEach((key, value) -> urlConn.setRequestProperty(key, value.toString()));
-			
+			Iterator<Map.Entry<String, String>> its = headers.entrySet().iterator();
+			while(its.hasNext()) {
+				Map.Entry<String, String> entry = its.next();
+				urlConn.setRequestProperty(entry.getKey(), entry.getValue());
+			}
+
 			// Send post data
 			if(this.httpMethod == HttpMethod.POST){
 				
 				// sn=C02G8416DRJM&cn=&locale=&caller=&num=12345
 				String urlParameters = this.postParams();
-				
-				urlConn.setDoOutput(true);
-				DataOutputStream wr = new DataOutputStream(urlConn.getOutputStream());
-				wr.writeBytes(urlParameters);
-				wr.flush();
-				wr.close();
+				if(null != urlParameters && !urlParameters.equals("")){
+					urlConn.setDoOutput(true);
+					DataOutputStream wr = new DataOutputStream(urlConn.getOutputStream());
+					wr.writeBytes(urlParameters);
+					wr.flush();
+					wr.close();
+				}
 			}
 			
 			response.contentType(urlConn.getContentType());
@@ -227,22 +261,27 @@ public class Request {
 			response.msg(urlConn.getResponseMessage());
 			response.statusCode(urlConn.getResponseCode());
 			
-			this.inputStream = urlConn.getInputStream();
-			
+			this.body = new Body(urlConn.getInputStream());
+			return this.body;
 		} catch (MalformedURLException e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage(), e);
 			response.statusCode(500);
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOGGER.error(e.getMessage(), e);
 			response.statusCode(500);
 		}
+		return null;
 	}
 
 	private String postParams() {
 		if(formdatas.size() > 0){
 			// url has been a parameter e.g:sn=C02G8416DRJM&cn=&locale=&caller=&num=12345
-			StringBuffer sb = new StringBuffer();
-			formdatas.forEach((key, value) -> sb.append( "&" + key + "=" + formdatas.get(key) ));
+			StringBuffer sb = new StringBuffer("");
+			Iterator<Map.Entry<String, Object>> its = formdatas.entrySet().iterator();
+			while(its.hasNext()) {
+				Map.Entry<String, Object> entry = its.next();
+				sb.append('&').append(entry.getKey()).append('=').append(entry.getValue());
+			}
 			return sb.substring(1);
 		}
 		return null;
