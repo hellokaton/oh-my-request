@@ -3,7 +3,6 @@ package io.github.biezhi.request;
 import javax.net.ssl.*;
 import java.io.*;
 import java.net.*;
-import java.nio.CharBuffer;
 import java.security.AccessController;
 import java.security.GeneralSecurityException;
 import java.security.PrivilegedAction;
@@ -31,6 +30,33 @@ public final class Request {
 
     private static SSLSocketFactory TRUSTED_FACTORY;
     private static HostnameVerifier TRUSTED_VERIFIER;
+    private static ConnectionFactory CONNECTION_FACTORY = ConnectionFactory.DEFAULT;
+
+    private HttpURLConnection connection = null;
+
+    private final URL url;
+
+    private final String requestMethod;
+
+    private RequestOutputStream output;
+
+    private boolean multipart;
+
+    private boolean form;
+
+    private boolean ignoreCloseExceptions = true;
+
+    private boolean unCompress = false;
+
+    private int bufferSize = 8192;
+
+    private long totalSize = -1;
+
+    private long totalWritten = 0;
+
+    private Proxy proxy;
+
+    private UploadProgress progress = UploadProgress.DEFAULT;
 
     private static String getValidCharset(final String charset) {
         if (charset != null && charset.length() > 0)
@@ -43,15 +69,12 @@ public final class Request {
             throws RequestException {
         if (TRUSTED_FACTORY == null) {
             final TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
-
                 public X509Certificate[] getAcceptedIssuers() {
                     return new X509Certificate[0];
                 }
-
                 public void checkClientTrusted(X509Certificate[] chain, String authType) {
                     // Intentionally left blank
                 }
-
                 public void checkServerTrusted(X509Certificate[] chain, String authType) {
                     // Intentionally left blank
                 }
@@ -61,29 +84,21 @@ public final class Request {
                 context.init(null, trustAllCerts, new SecureRandom());
                 TRUSTED_FACTORY = context.getSocketFactory();
             } catch (GeneralSecurityException e) {
-                IOException ioException = new IOException(
-                        "Security exception configuring SSL context");
+                IOException ioException = new IOException("Security exception configuring SSL context");
                 ioException.initCause(e);
                 throw new RequestException(ioException);
             }
         }
-
         return TRUSTED_FACTORY;
     }
 
     private static HostnameVerifier getTrustedVerifier() {
         if (TRUSTED_VERIFIER == null)
-            TRUSTED_VERIFIER = new HostnameVerifier() {
-
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            };
-
+            TRUSTED_VERIFIER = (hostname, session) -> true;
         return TRUSTED_VERIFIER;
     }
 
-    private static ConnectionFactory CONNECTION_FACTORY = ConnectionFactory.DEFAULT;
+
 
     /**
      * Specify the {@link ConnectionFactory} used to create new requests.
@@ -96,33 +111,13 @@ public final class Request {
     }
 
     /**
-     * Callback interface for reporting upload progress for a request.
-     */
-    public interface UploadProgress {
-        /**
-         * Callback invoked as data is uploaded by the request.
-         *
-         * @param uploaded The number of bytes already uploaded
-         * @param total    The total number of bytes that will be uploaded or -1 if
-         *                 the length is unknown.
-         */
-        void onUpload(long uploaded, long total);
-
-        UploadProgress DEFAULT = new UploadProgress() {
-            public void onUpload(long uploaded, long total) {
-            }
-        };
-    }
-
-    /**
      * Start a 'GET' request to the given URL
      *
      * @param url
      * @return request
      * @throws RequestException
      */
-    public static Request get(final CharSequence url)
-            throws RequestException {
+    public static Request get(final CharSequence url) throws RequestException {
         return new Request(url, METHOD_GET);
     }
 
@@ -502,47 +497,11 @@ public final class Request {
     private static String setProperty(final String name, final String value) {
         final PrivilegedAction<String> action;
         if (value != null)
-            action = new PrivilegedAction<String>() {
-
-                public String run() {
-                    return System.setProperty(name, value);
-                }
-            };
+            action = () -> System.setProperty(name, value);
         else
-            action = new PrivilegedAction<String>() {
-
-                public String run() {
-                    return System.clearProperty(name);
-                }
-            };
+            action = () -> System.clearProperty(name);
         return AccessController.doPrivileged(action);
     }
-
-    private HttpURLConnection connection = null;
-
-    private final URL url;
-
-    private final String requestMethod;
-
-    private RequestOutputStream output;
-
-    private boolean multipart;
-
-    private boolean form;
-
-    private boolean ignoreCloseExceptions = true;
-
-    private boolean uncompress = false;
-
-    private int bufferSize = 8192;
-
-    private long totalSize = -1;
-
-    private long totalWritten = 0;
-
-    private Proxy proxy;
-
-    private UploadProgress progress = UploadProgress.DEFAULT;
 
     /**
      * Create HTTP connection wrapper
@@ -551,8 +510,7 @@ public final class Request {
      * @param method HTTP request method (e.g., "GET", "POST").
      * @throws RequestException
      */
-    public Request(final CharSequence url, final String method)
-            throws RequestException {
+    public Request(final CharSequence url, final String method) throws RequestException {
         try {
             this.url = new URL(url.toString());
         } catch (MalformedURLException e) {
@@ -568,8 +526,7 @@ public final class Request {
      * @param method HTTP request method (e.g., "GET", "POST").
      * @throws RequestException
      */
-    public Request(final URL url, final String method)
-            throws RequestException {
+    public Request(final URL url, final String method) throws RequestException {
         this.url = url;
         this.requestMethod = method;
     }
@@ -651,8 +608,7 @@ public final class Request {
      * @return this request
      * @throws RequestException
      */
-    public Request code(final AtomicInteger output)
-            throws RequestException {
+    public Request code(final AtomicInteger output) throws RequestException {
         output.set(code());
         return this;
     }
@@ -811,7 +767,7 @@ public final class Request {
      * @return this request
      */
     public Request uncompress(final boolean uncompress) {
-        this.uncompress = uncompress;
+        this.unCompress = uncompress;
         return this;
     }
 
@@ -923,7 +879,7 @@ public final class Request {
                 }
             }
         }
-        if (!uncompress || !ENCODING_GZIP.equals(contentEncoding()))
+        if (!unCompress || !ENCODING_GZIP.equals(contentEncoding()))
             return stream;
         try {
             return new GZIPInputStream(stream);
@@ -942,8 +898,7 @@ public final class Request {
      * @return reader
      * @throws RequestException
      */
-    public InputStreamReader reader(final String charset)
-            throws RequestException {
+    public InputStreamReader reader(final String charset) throws RequestException {
         try {
             return new InputStreamReader(stream(), getValidCharset(charset));
         } catch (UnsupportedEncodingException e) {
@@ -971,8 +926,7 @@ public final class Request {
      * @throws RequestException
      * @see #bufferSize(int)
      */
-    public BufferedReader bufferedReader(final String charset)
-            throws RequestException {
+    public BufferedReader bufferedReader(final String charset) throws RequestException {
         return new BufferedReader(reader(charset), bufferSize);
     }
 
@@ -1017,8 +971,7 @@ public final class Request {
      * @return this request
      * @throws RequestException
      */
-    public Request receive(final OutputStream output)
-            throws RequestException {
+    public Request receive(final OutputStream output) throws RequestException {
         try {
             return copy(buffer(), output);
         } catch (IOException e) {
@@ -1033,8 +986,7 @@ public final class Request {
      * @return this request
      * @throws RequestException
      */
-    public Request receive(final PrintStream output)
-            throws RequestException {
+    public Request receive(final PrintStream output) throws RequestException {
         return receive((OutputStream) output);
     }
 
@@ -1048,7 +1000,6 @@ public final class Request {
     public Request receive(final Writer writer) throws RequestException {
         final BufferedReader reader = bufferedReader();
         return new CloseOperation<Request>(reader, ignoreCloseExceptions) {
-
             @Override
             public Request run() throws IOException {
                 return copy(reader, writer);
@@ -1169,8 +1120,7 @@ public final class Request {
      * @return date, default value on failures
      * @throws RequestException
      */
-    public long dateHeader(final String name, final long defaultValue)
-            throws RequestException {
+    public long dateHeader(final String name, final long defaultValue) throws RequestException {
         closeOutputQuietly();
         return getConnection().getHeaderFieldDate(name, defaultValue);
     }
@@ -1197,8 +1147,7 @@ public final class Request {
      * fails
      * @throws RequestException
      */
-    public int intHeader(final String name, final int defaultValue)
-            throws RequestException {
+    public int intHeader(final String name, final int defaultValue) throws RequestException {
         closeOutputQuietly();
         return getConnection().getHeaderFieldInt(name, defaultValue);
     }
@@ -1264,7 +1213,7 @@ public final class Request {
         if (end == -1)
             end = headerLength;
 
-        Map<String, String> params = new LinkedHashMap<String, String>();
+        Map<String, String> params = new LinkedHashMap<>();
         while (start < end) {
             int nameEnd = header.indexOf('=', start);
             if (nameEnd != -1 && nameEnd < end) {
@@ -1273,8 +1222,7 @@ public final class Request {
                     String value  = header.substring(nameEnd + 1, end).trim();
                     int    length = value.length();
                     if (length != 0)
-                        if (length > 2 && '"' == value.charAt(0)
-                                && '"' == value.charAt(length - 1))
+                        if (length > 2 && '"' == value.charAt(0) && '"' == value.charAt(length - 1))
                             params.put(name, value.substring(1, length - 1));
                         else
                             params.put(name, value);
@@ -1297,7 +1245,7 @@ public final class Request {
      * @param paramName
      * @return parameter value or null if none
      */
-    protected String getParam(final String value, final String paramName) {
+    private String getParam(final String value, final String paramName) {
         if (value == null || value.length() == 0)
             return null;
 
