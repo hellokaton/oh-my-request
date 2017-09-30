@@ -540,9 +540,7 @@ public final class Request {
 
     private long totalWritten = 0;
 
-    private String httpProxyHost;
-
-    private int httpProxyPort;
+    private Proxy proxy;
 
     private UploadProgress progress = UploadProgress.DEFAULT;
 
@@ -576,15 +574,11 @@ public final class Request {
         this.requestMethod = method;
     }
 
-    private Proxy createProxy() {
-        return new Proxy(HTTP, new InetSocketAddress(httpProxyHost, httpProxyPort));
-    }
-
     private HttpURLConnection createConnection() {
         try {
             final HttpURLConnection connection;
-            if (httpProxyHost != null)
-                connection = CONNECTION_FACTORY.create(url, createProxy());
+            if (this.proxy != null)
+                connection = CONNECTION_FACTORY.create(url, this.proxy);
             else
                 connection = CONNECTION_FACTORY.create(url);
             connection.setRequestMethod(requestMethod);
@@ -2266,8 +2260,15 @@ public final class Request {
         if (connection != null)
             throw new IllegalStateException("The connection has already been created. This method must be called before reading or writing to the request.");
 
-        this.httpProxyHost = proxyHost;
-        this.httpProxyPort = proxyPort;
+        this.proxy = new Proxy(HTTP, new InetSocketAddress(proxyHost, proxyPort));
+        return this;
+    }
+
+    public Request useProxy(Proxy proxy) {
+        if (connection != null)
+            throw new IllegalStateException("The connection has already been created. This method must be called before reading or writing to the request.");
+
+        this.proxy = proxy;
         return this;
     }
 
