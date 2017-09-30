@@ -4,6 +4,16 @@ this project is easy use http request.
 
 # Usage
 
+**Maven ArtifactId**
+
+```xml
+<dependency>
+    <groupId>io.github.biezhi</groupId>
+    <artifactId>oh-my-request</artifactId>
+    <version>0.0.1</version>
+</dependency>
+```
+
 ## 1. Get Request
 
 ```java
@@ -15,14 +25,14 @@ System.out.println(body);
 
 ```java
 Request.get("https://avatars3.githubusercontent.com/u/3849072?v=3&s=460")
-.saveAsDisk(new File("D:/avatar.png"));
+.receive(new File("D:/avatar.png"));
 ```
 
 ## 3. Post Request
 
 ```java
 Request.post("http://xxxx.com")
-.param("name", "jack")
+.form("name", "jack")
 .body();
 ```
 
@@ -30,6 +40,6 @@ Request.post("http://xxxx.com")
 
 ```java
 Request.get("http://xxxx.com")
-.header(Header.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; WOW64) xxxx")
+.header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) xxxx")
 .body();
 ```
