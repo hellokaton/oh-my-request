@@ -845,10 +845,10 @@ public final class Request {
      * @throws RequestException
      */
     public String body(final String charset) throws RequestException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        final ByteArrayOutputStream output = byteStream();
         try {
-            copy(buffer(), outputStream);
-            return outputStream.toString(charset);
+            copy(buffer(), output);
+            return output.toString(getValidCharset(charset));
         } catch (IOException e) {
             throw new RequestException(e);
         }
