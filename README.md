@@ -2,11 +2,9 @@
 
 this project is easy use http request.
 
-<p align="center">
-    <a href="https://travis-ci.org/biezhi/oh-my-request"><img src="https://img.shields.io/travis/biezhi/oh-my-request.svg?style=flat-square"></a>
-    <a href="http://search.maven.org/#search%7Cga%7C1%7Coh-my-request"><img src="https://img.shields.io/maven-central/v/io.github.biezhi/oh-my-request.svg?style=flat-square"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-4EB1BA.svg?style=flat-square"></a>
-</p>
+<a href="https://travis-ci.org/biezhi/oh-my-request"><img src="https://img.shields.io/travis/biezhi/oh-my-request.svg?style=flat-square"></a>
+<a href="http://search.maven.org/#search%7Cga%7C1%7Coh-my-request"><img src="https://img.shields.io/maven-central/v/io.github.biezhi/oh-my-request.svg?style=flat-square"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-4EB1BA.svg?style=flat-square"></a>
 
 # Usage
 
