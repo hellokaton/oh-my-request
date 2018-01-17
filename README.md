@@ -1,10 +1,12 @@
 # oh-my-request
 
-this project is easy use http request.
+`HTTP` request easier operation.
 
-<a href="https://travis-ci.org/biezhi/oh-my-request"><img src="https://img.shields.io/travis/biezhi/oh-my-request.svg?style=flat-square"></a>
-<a href="http://search.maven.org/#search%7Cga%7C1%7Coh-my-request"><img src="https://img.shields.io/maven-central/v/io.github.biezhi/oh-my-request.svg?style=flat-square"></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-4EB1BA.svg?style=flat-square"></a>
+[![](https://img.shields.io/travis/biezhi/oh-my-request.svg)](https://travis-ci.org/biezhi/oh-my-request)
+[![](https://img.shields.io/maven-central/v/io.github.biezhi/oh-my-request.svg)](http://search.maven.org/#search%7Cga%7C1%7Coh-my-request)
+[![](https://img.shields.io/badge/license-Apache2-FF0080.svg)](https://github.com/biezhi/oh-my-request/blob/master/LICENSE)
+[![@biezhi on zhihu](https://img.shields.io/badge/zhihu-%40biezhi-red.svg)](https://www.zhihu.com/people/biezhi)
+[![](https://img.shields.io/github/followers/biezhi.svg?style=social&label=Follow%20Me)](https://github.com/biezhi)
 
 # Usage
 
@@ -47,3 +49,7 @@ Request.get("http://xxxx.com")
 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) xxxx")
 .body();
 ```
+
+# License
+
+[Apache2](https://github.com/biezhi/oh-my-request/blob/master/LICENSE)
